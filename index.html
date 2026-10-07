@@ -17,7 +17,7 @@
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,system-ui,"Segoe UI",sans-serif}
 main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
 h1,h2{font-family:"Avenir Next Condensed","Arial Narrow",Impact,sans-serif;font-weight:700;margin:0}
-h1{font-size:30px;letter-spacing:.2px}h2{font-size:20px;margin-bottom:8px}
+h1{font-size:25px;letter-spacing:.2px}h2{font-size:20px;margin-bottom:8px}
 .sub{color:var(--mute);font-size:14px;margin:0 0 14px}
 nav{display:flex;gap:6px;margin:0 0 14px}
 nav button{flex:1;padding:10px 2px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;font:500 13.5px -apple-system,system-ui,sans-serif;cursor:pointer}
@@ -41,6 +41,17 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .empty{color:var(--mute);text-align:center;padding:20px 8px}
 svg{width:100%;height:auto;display:block}
 .pr{display:flex;justify-content:space-between;align-items:baseline}
+.car{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+.car::-webkit-scrollbar{display:none}
+.wc{flex:0 0 100%;scroll-snap-align:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;min-height:300px;margin-bottom:16px}
+.wh{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.wn{width:34px;height:34px;border-radius:50%;background:var(--accbg);color:var(--acc);display:flex;align-items:center;justify-content:center;font:700 18px "Avenir Next Condensed","Arial Narrow",Impact,sans-serif;flex:none}
+.wt{margin:0;font:700 21px/1.1 "Avenir Next Condensed","Arial Narrow",Impact,sans-serif}.ws{margin:2px 0 0;font-size:12px;color:var(--mute)}
+.wr{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:15px;line-height:1.4}
+.wl{width:78px;flex:none;font-size:12px;font-weight:600;color:var(--acc);text-transform:uppercase;letter-spacing:.4px;padding-top:2px}
+.dots{display:flex;justify-content:center;gap:8px;margin:4px 0 12px}
+.dots button{width:10px;height:10px;padding:0;border:0;border-radius:5px;background:var(--line);cursor:pointer}
+.dots button.on{width:24px;background:var(--acc)}
 </style></head><body><main>
 <h1>CrossFit Tracker @ UV Home</h1>
 <p class="sub">Works offline. Saved on this device only.</p>
@@ -61,7 +72,8 @@ svg{width:100%;height:auto;display:block}
 <button class="save" id="save">Save workout</button><div class="toast" id="toast"></div>
 </div></section>
 
-<section id="plan" hidden><div class="card"><div class="pr"><h2>Plan</h2><select id="pw" style="width:auto" aria-label="Week"></select></div><p class="sub" id="pn"></p><div id="pl"></div></div>
+<section id="plan" hidden><div class="pr" style="margin-bottom:6px"><h2>Plan</h2><select id="pw" style="width:auto" aria-label="Week"></select></div><p class="sub" id="pn"></p>
+<div id="dots" class="dots"></div><div id="pl" class="car"></div>
 <div class="card"><h2>Add a new week</h2><p class="sub">Paste the plan text you get from Claude, or choose its file.</p>
 <input type="file" id="pf" accept=".json,application/json"><label for="pt">Or paste plan text</label><textarea id="pt" rows="3"></textarea>
 <button class="save" id="pi">Add plan</button><div class="toast" id="pm"></div></div></section>
@@ -125,8 +137,13 @@ function okPlan(p){return p&&typeof p.week==="number"&&Array.isArray(p.workouts)
 function renderPlan(sel){plans.sort(function(a,b){return a.week-b.week});var cur=sel||parseInt($("pw").value)||plans[plans.length-1].week;if(!plans.some(function(p){return p.week===cur}))cur=plans[plans.length-1].week;
  $("pw").innerHTML=plans.map(function(p){return'<option value="'+p.week+'"'+(p.week===cur?" selected":"")+">Week "+p.week+"</option>"}).join("");
  var p=plans.filter(function(x){return x.week===cur})[0];$("pn").textContent=(p.title?p.title+". ":"")+(p.note||"");
- $("pl").innerHTML=p.workouts.map(function(w,i){return'<div class="ent"><div class="eh"><b>'+(i+1)+": "+esc(w.name)+'</b><button class="del" style="color:var(--acc)" data-i="'+i+'">Log it</button></div>'+w.blocks.map(function(b){return'<div class="ed"><span style="color:var(--ink)">'+esc(b[0])+":</span> "+esc(b[1])+"</div>"}).join("")+"</div>"}).join("");
- [].forEach.call($("pl").querySelectorAll(".del"),function(b){b.onclick=function(){document.querySelector("nav button[data-t=log]").click();var i=+b.dataset.i+1;if(i<=5){$("w").value=i;lifts()}window.scrollTo(0,0)}})}
+ var N=p.workouts.length;
+ $("pl").innerHTML=p.workouts.map(function(w,i){return'<div class="wc"><div class="wh"><div class="wn">'+(i+1)+'</div><div><p class="wt">'+esc(w.name)+'</p><p class="ws">Workout '+(i+1)+" of "+N+(N>1?" \u00b7 swipe for next":"")+"</p></div></div>"+w.blocks.map(function(b){return'<div class="wr"><div class="wl">'+esc(b[0])+"</div><div>"+esc(b[1])+"</div></div>"}).join("")+'<button class="save" data-i="'+i+'">Log this workout</button></div>'}).join("");
+ $("dots").innerHTML=p.workouts.map(function(w,i){return'<button aria-label="Workout '+(i+1)+'" data-i="'+i+'"'+(i===0?' class="on"':"")+"></button>"}).join("");
+ var car=$("pl");car.scrollLeft=0;
+ car.onscroll=function(){var i=Math.round(car.scrollLeft/(car.clientWidth+12));[].forEach.call($("dots").children,function(d,k){d.className=k===i?"on":""})};
+ [].forEach.call($("dots").children,function(d){d.onclick=function(){car.scrollTo({left:+d.dataset.i*(car.clientWidth+12),behavior:"smooth"})}});
+ [].forEach.call(car.querySelectorAll(".save"),function(b){b.onclick=function(){document.querySelector("nav button[data-t=log]").click();var i=+b.dataset.i+1;if(i<=5){$("w").value=i;lifts()}window.scrollTo(0,0)}})}
 $("pw").onchange=function(){renderPlan(parseInt(this.value))};
 function addPlan(t){try{var o=JSON.parse(t),a=Array.isArray(o)?o:[o];if(!a.length||!a.every(okPlan))throw 0;a.forEach(function(p){plans=plans.filter(function(x){return x.week!==p.week});plans.push(p)});savePlan();renderPlan(a[a.length-1].week);$("pt").value="";say("pm","Added Week "+a[a.length-1].week+".")}catch(e){say("pm","That doesn't look like a valid plan. Paste the full text.")}}
 $("pi").onclick=function(){addPlan($("pt").value)};
